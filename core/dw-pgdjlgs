@@ -1,6 +1,6 @@
 #!/bin/bash
-# dw-pgdjlgs: download tools with pip-style progress bar
-BASE_URL="https://raw.githubusercontent.com/pgdjlgs/tols/main"
+# dw-pgdjlgs: download tools from bin/ directory
+BASE_URL="https://raw.githubusercontent.com/pgdjlgs/tols/main/bin"
 
 if [[ $EUID -ne 0 ]]; then
    echo "error: root privileges required."
@@ -14,7 +14,6 @@ if [ -z "$TOOL" ]; then
 fi
 
 echo "collecting $TOOL"
-# curl -# provides the pip-style progress bar
 HTTP_STATUS=$(curl -# -L -o "/usr/local/bin/$TOOL" -w "%{http_code}" "$BASE_URL/$TOOL")
 
 if [ "$HTTP_STATUS" -eq 200 ]; then
@@ -22,5 +21,5 @@ if [ "$HTTP_STATUS" -eq 200 ]; then
     echo "successfully installed $TOOL."
 else
     rm -f "/usr/local/bin/$TOOL"
-    echo "error: status $HTTP_STATUS. tool not found."
+    echo "error: status $HTTP_STATUS. tool not found in /bin."
 fi
