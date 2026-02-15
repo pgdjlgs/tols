@@ -1,0 +1,26 @@
+#!/bin/bash
+# grubtheme: toggle between dark and light grub themes
+
+THEME_DIR="/boot/grub/themes"
+
+if [[ $EUID -ne 0 ]]; then
+   echo "error: run as sudo."
+   exit 1
+fi
+
+case $1 in
+  dark)
+    echo "applying dark theme..."
+    # نفذ هنا أمر تغيير المسار في ملف /etc/default/grub
+    sed -i 's|GRUB_THEME=.*|GRUB_THEME="'$THEME_DIR'/dark/theme.txt"|' /etc/default/grub
+    update-grub
+    ;;
+  light)
+    echo "applying light theme..."
+    sed -i 's|GRUB_THEME=.*|GRUB_THEME="'$THEME_DIR'/light/theme.txt"|' /etc/default/grub
+    update-grub
+    ;;
+  *)
+    echo "usage: grubtheme dark | light"
+    ;;
+esac
