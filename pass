@@ -1,20 +1,16 @@
 #!/bin/bash
-
-# ألوان العين (الشارينغان)
-RED='\033[0;31m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+# pass: switch between windows and void linux
 
 case $1 in
   wd)
-    echo -e "${CYAN}👁️‍🗨️ استدعاء بوابة الويندوز...${NC}"
+    echo "booting windows..."
     sudo grub-reboot 2 && sudo reboot
     ;;
   vo)
-    echo -e "${RED}🌀 العودة إلى الفراغ (Void)...${NC}"
+    echo "booting void linux..."
     sudo grub-reboot 0 && sudo reboot
     ;;
   *)
-    echo "❌ خطأ! استخدم: pass wd أو pass vo"
+    echo "usage: pass wd | pass vo"
     ;;
 esac
