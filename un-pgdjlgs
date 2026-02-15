@@ -1,0 +1,19 @@
+#!/bin/bash
+# un-pgdjlgs: remove tool
+if [[ $EUID -ne 0 ]]; then
+   echo "error: root privileges required."
+   exit 1
+fi
+
+TOOL=$1
+if [ -z "$TOOL" ]; then
+    echo "usage: sudo un-pgdjlgs <tool_name>"
+    exit 1
+fi
+
+if [ -f "/usr/local/bin/$TOOL" ]; then
+    rm -f "/usr/local/bin/$TOOL"
+    echo "removed $TOOL."
+else
+    echo "error: $TOOL not found."
+fi

@@ -1,28 +1,26 @@
 #!/bin/bash
+# dw-pgdjlgs: download tools with pip-style progress bar
+BASE_URL="https://raw.githubusercontent.com/pgdjlgs/tols/main"
 
-# رابط المستودع الخام (Raw) على GitHub
-RAW_URL="https://raw.githubusercontent.com/pgdjlgs/tols/main"
+if [[ $EUID -ne 0 ]]; then
+   echo "error: root privileges required."
+   exit 1
+fi
 
-if [ "$1" == "-s" ]; then
-    TOOL_NAME=$2
-    if [ -z "$TOOL_NAME" ]; then
-        echo "❌ خطأ: يرجى كتابة اسم الأداة. مثال: sudo dw-pgdjlgs -s pass"
-        exit 1
-    fi
+TOOL=$1
+if [ -z "$TOOL" ]; then
+    echo "usage: sudo dw-pgdjlgs <tool_name>"
+    exit 1
+fi
 
-    echo "🌐 جاري جلب [$TOOL_NAME] من سحابة GitHub..."
-    
-    # تحميل الأداة مباشرة إلى مسار الأوامر
-    sudo curl -L "$RAW_URL/$TOOL_NAME" -o "/usr/local/bin/$TOOL_NAME"
+echo "collecting $TOOL"
+# curl -# provides the pip-style progress bar
+HTTP_STATUS=$(curl -# -L -o "/usr/local/bin/$TOOL" -w "%{http_code}" "$BASE_URL/$TOOL")
 
-    # التأكد من نجاح التحميل (إذا كان الملف موجود في GitHub)
-    if [ $? -eq 0 ] && [ $(stat -c%s "/usr/local/bin/$TOOL_NAME") -gt 100 ]; then
-        sudo chmod +x "/usr/local/bin/$TOOL_NAME"
-        echo "✅ استدعاء ناجح! الأداة [$TOOL_NAME] جاهزة للعمل الآن."
-    else
-        sudo rm "/usr/local/bin/$TOOL_NAME"
-        echo "❌ خطأ: لم يتم العثور على الأداة أو فشل الاتصال."
-    fi
+if [ "$HTTP_STATUS" -eq 200 ]; then
+    chmod +x "/usr/local/bin/$TOOL"
+    echo "successfully installed $TOOL."
 else
-    echo "❓ الاستخدام: sudo dw-pgdjlgs -s [اسم_الأداة]"
+    rm -f "/usr/local/bin/$TOOL"
+    echo "error: status $HTTP_STATUS. tool not found."
 fi

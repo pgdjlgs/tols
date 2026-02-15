@@ -1,0 +1,5 @@
+#!/bin/bash
+# sh-pgdjlgs: search tools
+echo "querying repository..."
+curl -s "https://api.github.com/repos/pgdjlgs/tols/contents/" | \
+grep '"name":' | cut -d'"' -f4 | grep -vE "README|install"
