@@ -1,1 +1,38 @@
-# (انسخ الكود البرمجي أعلاه بالكامل وضعه هنا)
+#!/bin/bash
+# grubtheme: dynamic theme selector (interactive)
+
+THEME_DIR="/boot/grub/themes"
+GRUB_CONFIG="/etc/default/grub"
+
+if [[ $EUID -ne 0 ]]; then
+   echo "error: run as sudo."
+   exit 1
+fi
+
+echo "fetching themes from $THEME_DIR..."
+themes=($(ls -d $THEME_DIR/*/ 2>/dev/null | xargs -n 1 basename))
+
+if [ ${#themes[@]} -eq 0 ]; then
+    echo "error: no themes found in $THEME_DIR"
+    exit 1
+fi
+
+for i in "${!themes[@]}"; do
+    echo "[$i] ${themes[$i]}"
+done
+
+read -p "enter theme number: " choice
+
+if [[ -n ${themes[$choice]} ]]; then
+    SELECTED_THEME="${themes[$choice]}"
+    echo "applying $SELECTED_THEME..."
+    sed -i "s|^GRUB_THEME=.*|GRUB_THEME=\"$THEME_DIR/$SELECTED_THEME/theme.txt\"|" $GRUB_CONFIG
+    if command -v update-grub &> /dev/null; then
+        update-grub
+    else
+        grub-mkconfig -o /boot/grub/grub.cfg
+    fi
+    echo "system updated successfully."
+else
+    echo "error: invalid selection."
+fi
