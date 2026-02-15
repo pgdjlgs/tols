@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# ألوان للتميز البصري (إضافة لمسة إبداعية)
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}=== Sharingan Cleaner: Purifying your System ===${NC}"
+
+# 1. التحقق من الصلاحيات (Root)
+if [[ $EUID -ne 0 ]]; then
+   echo -e "${RED}خطأ: يجب تشغيل الأداة بصلاحيات sudo!${NC}"
+   exit 1
+fi
+
+# 2. وظيفة تنظيف الملفات المؤقتة
+clean_temp() {
+    echo -e "${GREEN}[*] جاري تنظيف المجلدات المؤقتة (/tmp)...${NC}"
+    rm -rf /tmp/*
+    rm -rf /var/tmp/*
+    echo -e "${GREEN}✔ تم تنظيف الملفات المؤقتة.${NC}"
+}
+
+# 3. اكتشاف مدير الحزم وتنظيفه
+if command -v xbps-install &> /dev/null; then
+    echo -e "${BLUE}[!] تم اكتشاف نظام Void Linux (XBPS)${NC}"
+    echo -e "${GREEN}[*] تفريغ كاش XBPS...${NC}"
+    xbps-remove -O -y
+    echo -e "${GREEN}[*] إزالة الحزم اليتيمة...${NC}"
+    xbps-remove -o -y
+    
+elif command -v apt-get &> /dev/null; then
+    echo -e "${BLUE}[!] تم اكتشاف نظام يعتمد على APT${NC}"
+    echo -e "${GREEN}[*] تنظيف كاش APT...${NC}"
+    apt-get clean
+    apt-get autoclean
+    echo -e "${GREEN}[*] إزالة الحزم اليتيمة (Autoremove)...${NC}"
+    apt-get autoremove -y
+fi
+
+clean_temp
+echo -e "${BLUE}--- النظام الآن نقي تماماً كعين الشارينغان الواضحة! ---${NC}"
