@@ -1,0 +1,29 @@
+#!/bin/bash
+# vodiki: terminal-based chat system
+
+SERVER_URL="https://your-api-link.com" # سنحتاج لإنشاء خادم بسيط لاحقاً
+CONFIG_DIR="$HOME/.config/vodiki"
+mkdir -p "$CONFIG_DIR"
+
+case $1 in
+    login)
+        read -p "Enter your hacker handle: " handle
+        echo "$handle" > "$CONFIG_DIR/user"
+        echo "Welcome, $handle. Your identity is forged."
+        ;;
+    send)
+        USER=$(cat "$CONFIG_DIR/user")
+        MSG="${@:2}"
+        echo "[$USER]: $MSG"
+        # هنا نرسل الرسالة للخادم عبر curl
+        curl -s -X POST -d "user=$USER&msg=$MSG" "$SERVER_URL/send" > /dev/null
+        ;;
+    read)
+        echo "--- Global Stream ---"
+        # هنا نجلب آخر الرسائل
+        curl -s "$SERVER_URL/stream" | jq -r '.[] | "[\(.user)]: \(.msg)"'
+        ;;
+    *)
+        echo "usage: vodiki login | send <msg> | read"
+        ;;
+esac
