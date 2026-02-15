@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# مسار مجلد الأدوات الخاص بك
-REPO_DIR="$HOME/dw-pgdjlgs"
+# اكتشاف المستخدم الحقيقي حتى لو تم استخدام sudo
+REAL_USER=${SUDO_USER:-$USER}
+REPO_DIR="/home/$REAL_USER/dw-pgdjlgs"
 
 if [ "$1" == "-s" ]; then
     TOOL_NAME=$2
@@ -11,8 +12,11 @@ if [ "$1" == "-s" ]; then
         cp "$REPO_DIR/$TOOL_NAME" /usr/local/bin/
         echo "✅ تم التثبيت! يمكنك الآن كتابة '$TOOL_NAME' في أي مكان."
     else
-        echo "❌ خطأ: الأداة '$TOOL_NAME' غير موجودة في المستودع."
+        echo "❌ خطأ: لم يتم العثور على '$TOOL_NAME' في $REPO_DIR"
     fi
+elif [ "$1" == "-u" ]; then
+    echo "🔄 تحديث المستودع من GitHub..."
+    cd "$REPO_DIR" && git pull
 else
-    echo "❓ الاستخدام الصحيح: sudo dw-pgdjlgs -s [اسم_الأداة]"
+    echo "❓ الاستخدام: sudo dw-pgdjlgs -s [الأداة] أو -u للتحديث"
 fi
