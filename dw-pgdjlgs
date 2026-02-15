@@ -1,22 +1,28 @@
 #!/bin/bash
 
-# اكتشاف المستخدم الحقيقي حتى لو تم استخدام sudo
-REAL_USER=${SUDO_USER:-$USER}
-REPO_DIR="/home/$REAL_USER/dw-pgdjlgs"
+# رابط المستودع الخام (Raw) على GitHub
+RAW_URL="https://raw.githubusercontent.com/pgdjlgs/tols/main"
 
 if [ "$1" == "-s" ]; then
     TOOL_NAME=$2
-    if [ -f "$REPO_DIR/$TOOL_NAME" ]; then
-        echo "⚙️ جاري تثبيت الأداة: $TOOL_NAME ..."
-        chmod +x "$REPO_DIR/$TOOL_NAME"
-        cp "$REPO_DIR/$TOOL_NAME" /usr/local/bin/
-        echo "✅ تم التثبيت! يمكنك الآن كتابة '$TOOL_NAME' في أي مكان."
-    else
-        echo "❌ خطأ: لم يتم العثور على '$TOOL_NAME' في $REPO_DIR"
+    if [ -z "$TOOL_NAME" ]; then
+        echo "❌ خطأ: يرجى كتابة اسم الأداة. مثال: sudo dw-pgdjlgs -s pass"
+        exit 1
     fi
-elif [ "$1" == "-u" ]; then
-    echo "🔄 تحديث المستودع من GitHub..."
-    cd "$REPO_DIR" && git pull
+
+    echo "🌐 جاري جلب [$TOOL_NAME] من سحابة GitHub..."
+    
+    # تحميل الأداة مباشرة إلى مسار الأوامر
+    sudo curl -L "$RAW_URL/$TOOL_NAME" -o "/usr/local/bin/$TOOL_NAME"
+
+    # التأكد من نجاح التحميل (إذا كان الملف موجود في GitHub)
+    if [ $? -eq 0 ] && [ $(stat -c%s "/usr/local/bin/$TOOL_NAME") -gt 100 ]; then
+        sudo chmod +x "/usr/local/bin/$TOOL_NAME"
+        echo "✅ استدعاء ناجح! الأداة [$TOOL_NAME] جاهزة للعمل الآن."
+    else
+        sudo rm "/usr/local/bin/$TOOL_NAME"
+        echo "❌ خطأ: لم يتم العثور على الأداة أو فشل الاتصال."
+    fi
 else
-    echo "❓ الاستخدام: sudo dw-pgdjlgs -s [الأداة] أو -u للتحديث"
+    echo "❓ الاستخدام: sudo dw-pgdjlgs -s [اسم_الأداة]"
 fi
