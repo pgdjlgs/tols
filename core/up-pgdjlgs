@@ -1,0 +1,35 @@
+#!/bin/bash
+# up-pgdjlgs v0.1 - The Updater
+# أداة تحديث الحزم المستقلة
+
+PACKAGE=$1
+REPO="pgdjlgs/tols"
+LOCAL_BIN="/usr/local/bin"
+
+# دالة لتحديث حزمة معينة
+update_package() {
+    local name=$1
+    echo "🔄 Updating $name..."
+    # التحميل من فرع main دائماً للتحديث لأحدث نسخة
+    sudo curl -s -L -f -o "$LOCAL_BIN/$name" "https://raw.githubusercontent.com/$REPO/main/bin/$name"
+    
+    if [ $? -eq 0 ]; then
+        sudo chmod +x "$LOCAL_BIN/$name"
+        echo "✅ $name updated successfully."
+    else
+        echo "❌ Failed to update $name. Check your internet or package name."
+    fi
+}
+
+# المنطق: هل المستخدم حدد حزمة؟
+if [ -z "$PACKAGE" ]; then
+    echo "🚀 No package specified. Updating ALL tools..."
+    # هنا نقوم بتحديث كل ما هو موجود في مجلد bin الخاص بالمستودع
+    # سنفترض أنك تملك قائمة بالأدوات أو نقوم بجلبها من GitHub
+    for tool in grubtheme dw-pgdjlgs un-pgdjlgs; do
+        update_package "$tool"
+    done
+else
+    # تحديث الحزمة المحددة فقط
+    update_package "$PACKAGE"
+fi
