@@ -1,25 +1,35 @@
 #!/bin/bash
-# dw-pgdjlgs: download tools from bin/ directory
-BASE_URL="https://raw.githubusercontent.com/pgdjlgs/tols/main/bin"
-
-if [[ $EUID -ne 0 ]]; then
-   echo "error: root privileges required."
-   exit 1
-fi
+# dw-pgdjlgs v0.3 - Dynamic Manager
+# هذا السكربت يكتشف الإصدارات تلقائياً من GitHub
 
 TOOL=$1
+VERSION=$2
+REPO="pgdjlgs/tols"
+
+# إذا لم يحدد المستخدم أداة، نعرض له المساعدة
 if [ -z "$TOOL" ]; then
-    echo "usage: sudo dw-pgdjlgs <tool_name>"
+    echo "Usage: dw-pgdjlgs <tool_name> [version]"
+    echo "Example: dw-pgdjlgs grubtheme v0.1"
     exit 1
 fi
 
-echo "collecting $TOOL"
-HTTP_STATUS=$(curl -# -L -o "/usr/local/bin/$TOOL" -w "%{http_code}" "$BASE_URL/$TOOL")
+# إذا لم يحدد المستخدم إصداراً، نستخدم 'main' (أحدث كود)
+if [ -z "$VERSION" ]; then
+    VERSION="main"
+fi
 
-if [ "$HTTP_STATUS" -eq 200 ]; then
-    chmod +x "/usr/local/bin/$TOOL"
-    echo "successfully installed $TOOL."
+# الرابط السحري الذي يجلب الملف من أي Tag أو Branch
+URL="https://raw.githubusercontent.com/$REPO/$VERSION/bin/$TOOL"
+
+echo "📡 Connecting to cloud... Fetching $TOOL ($VERSION)"
+
+# التحميل باستخدام curl
+sudo curl -s -L -f -o "/usr/local/bin/$TOOL" "$URL"
+
+if [ $? -eq 0 ]; then
+    sudo chmod +x "/usr/local/bin/$TOOL"
+    echo "✅ Done! $TOOL ($VERSION) is now installed."
 else
-    rm -f "/usr/local/bin/$TOOL"
-    echo "error: status $HTTP_STATUS. tool not found in /bin."
+    echo "❌ Error: Could not find $TOOL in version $VERSION."
+    echo "Hint: Check if the tag exists on GitHub."
 fi
