@@ -1,38 +1,51 @@
 #!/bin/bash
-# grubtheme: dynamic theme selector (interactive)
+# grubtheme v0.2 - Smart Detection Mode
+# Developed by pgdjlgs
 
-THEME_DIR="/boot/grub/themes"
-GRUB_CONFIG="/etc/default/grub"
+VERSION="0.2"
+THEMES_DIR="/boot/grub/themes"
 
-if [[ $EUID -ne 0 ]]; then
-   echo "error: run as sudo."
-   exit 1
-fi
+echo "--- grubtheme v$VERSION ---"
 
-echo "fetching themes from $THEME_DIR..."
-themes=($(ls -d $THEME_DIR/*/ 2>/dev/null | xargs -n 1 basename))
+# دالة البحث الذكي
+smart_search() {
+    echo "إدخال فارغ.. جاري تفعيل البحث الذكي عن أفضل دقة..."
+    
+    # البحث عن المجلدات التي تحتوي على ملف الإعدادات
+    mapfile -t found_themes < <(find . -name "theme.txt" -exec dirname {} \;)
 
-if [ ${#themes[@]} -eq 0 ]; then
-    echo "error: no themes found in $THEME_DIR"
-    exit 1
-fi
-
-for i in "${!themes[@]}"; do
-    echo "[$i] ${themes[$i]}"
-done
-
-read -p "enter theme number: " choice
-
-if [[ -n ${themes[$choice]} ]]; then
-    SELECTED_THEME="${themes[$choice]}"
-    echo "applying $SELECTED_THEME..."
-    sed -i "s|^GRUB_THEME=.*|GRUB_THEME=\"$THEME_DIR/$SELECTED_THEME/theme.txt\"|" $GRUB_CONFIG
-    if command -v update-grub &> /dev/null; then
-        update-grub
-    else
-        grub-mkconfig -o /boot/grub/grub.cfg
+    if [ ${#found_themes[@]} -eq 0 ]; then
+        echo "خطأ: لم يتم العثور على أي ثيم صالح (theme.txt مفقود)."
+        exit 1
     fi
-    echo "system updated successfully."
+
+    # محاولة اختيار مجلد 1080p أو المجلد الذي يحتوي على كلمة background
+    best_match=$(printf '%s\n' "${found_themes[@]}" | grep -E "1080p|FullHD|background" | head -n 1)
+
+    # إذا لم يجد كلمات دالة، يختار أول مجلد يحتوي على theme.txt
+    if [ -z "$best_match" ]; then
+        best_match="${found_themes[0]}"
+    fi
+
+    echo "تم اختيار المسار الأنسب تلقائياً: $best_match"
+    SELECTED_THEME_PATH="$best_match"
+}
+
+# الطلب من المستخدم
+read -p "أدخل اسم مجلد الثيم أو اضغط Enter للبحث الذكي: " user_input
+
+if [ -z "$user_input" ]; then
+    smart_search
 else
-    echo "error: invalid selection."
+    SELECTED_THEME_PATH="./$user_input"
+fi
+
+# فحص نهائي وتطبيق الثيم (المنطق الأساسي)
+if [ -d "$SELECTED_THEME_PATH" ]; then
+    echo "جاري تطبيق الثيم من $SELECTED_THEME_PATH..."
+    # هنا تضع أوامر النسخ وتعديل ملف /etc/default/grub
+    # sudo cp -r "$SELECTED_THEME_PATH" "$THEMES_DIR/"
+    # ... إلخ
+else
+    echo "خطأ: المجلد غير موجود."
 fi
