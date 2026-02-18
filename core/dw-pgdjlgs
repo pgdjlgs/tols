@@ -1,35 +1,41 @@
 #!/bin/bash
-# dw-pgdjlgs v0.3 - Dynamic Manager
-# هذا السكربت يكتشف الإصدارات تلقائياً من GitHub
+# dw-pgdjlgs - Dynamic Package Manager
+# لا يحتاج لتعديل مهما زاد عدد الأدوات أو الإصدارات
 
 TOOL=$1
 VERSION=$2
 REPO="pgdjlgs/tols"
+LOCAL_BIN="/usr/local/bin"
 
-# إذا لم يحدد المستخدم أداة، نعرض له المساعدة
-if [ -z "$TOOL" ]; then
-    echo "Usage: dw-pgdjlgs <tool_name> [version]"
-    echo "Example: dw-pgdjlgs grubtheme v0.1"
-    exit 1
+# 1. منع التحميل المتكرر (Anti-Duplicate)
+if [ -f "$LOCAL_BIN/$TOOL" ] && [ -z "$VERSION" ]; then
+    echo "⚠️  The tool '$TOOL' is already installed."
+    echo "💡 To update it to the latest version, run: up-pgdjlgs $TOOL"
+    exit 0
 fi
 
-# إذا لم يحدد المستخدم إصداراً، نستخدم 'main' (أحدث كود)
+# 2. المنطق الديناميكي للإصدارات
+# إذا المستخدم لم يكتب إصدار، نذهب لـ main تلقائياً
 if [ -z "$VERSION" ]; then
-    VERSION="main"
+    TARGET_VERSION="main"
+else
+    TARGET_VERSION="$VERSION"
 fi
 
-# الرابط السحري الذي يجلب الملف من أي Tag أو Branch
-URL="https://raw.githubusercontent.com/$REPO/$VERSION/bin/$TOOL"
+# 3. الرابط "العبقري" (يتشكل تلقائياً)
+# أي أداة ترفعها في bin/ وأي وسم (Tag) تضعه، هذا الرابط سيجده
+URL="https://raw.githubusercontent.com/$REPO/$TARGET_VERSION/bin/$TOOL"
 
-echo "📡 Connecting to cloud... Fetching $TOOL ($VERSION)"
+echo "📡 Checking cloud for $TOOL (Version: $TARGET_VERSION)..."
 
-# التحميل باستخدام curl
-sudo curl -s -L -f -o "/usr/local/bin/$TOOL" "$URL"
+# 4. محاولة التحميل
+sudo curl -s -L -f -o "$LOCAL_BIN/$TOOL" "$URL"
 
 if [ $? -eq 0 ]; then
-    sudo chmod +x "/usr/local/bin/$TOOL"
-    echo "✅ Done! $TOOL ($VERSION) is now installed."
+    sudo chmod +x "$LOCAL_BIN/$TOOL"
+    echo "✅ Successfully installed $TOOL from $TARGET_VERSION."
 else
-    echo "❌ Error: Could not find $TOOL in version $VERSION."
-    echo "Hint: Check if the tag exists on GitHub."
+    echo "❌ Error: Tool or Version not found on GitHub."
+    echo "Check: https://github.com/$REPO/tags"
+    exit 1
 fi
