@@ -1,51 +1,178 @@
 #!/bin/bash
-# grubtheme v0.2 - Smart Detection Mode
-# Developed by pgdjlgs
+# ==============================================================================
+# الأداة: grubtheme v1.0 (The Ultimate Boot Manager)
+# الوصف: استخراج، فحص ذكي، قائمة تفاعلية، وتطبيق ثيمات GRUB بدقة متناهية.
+# ==============================================================================
 
-VERSION="0.2"
-THEMES_DIR="/boot/grub/themes"
+# --- إعدادات الألوان (لواجهة Riced) ---
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+BOLD='\033[1m'
 
-echo "--- grubtheme v$VERSION ---"
+# --- المسارات والمتغيرات ---
+BOOT_THEMES="/boot/grub/themes"
+GRUB_CONFIG="/etc/default/grub"
+BACKUP_CONFIG="/etc/default/grub.bak.$(date +%F_%H-%M-%S)"
+TEMP_EXTRACT="/tmp/grubtheme_monster_extract"
+LOG_FILE="/var/log/grubtheme.log"
 
-# دالة البحث الذكي
-smart_search() {
-    echo "إدخال فارغ.. جاري تفعيل البحث الذكي عن أفضل دقة..."
-    
-    # البحث عن المجلدات التي تحتوي على ملف الإعدادات
-    mapfile -t found_themes < <(find . -name "theme.txt" -exec dirname {} \;)
-
-    if [ ${#found_themes[@]} -eq 0 ]; then
-        echo "خطأ: لم يتم العثور على أي ثيم صالح (theme.txt مفقود)."
-        exit 1
-    fi
-
-    # محاولة اختيار مجلد 1080p أو المجلد الذي يحتوي على كلمة background
-    best_match=$(printf '%s\n' "${found_themes[@]}" | grep -E "1080p|FullHD|background" | head -n 1)
-
-    # إذا لم يجد كلمات دالة، يختار أول مجلد يحتوي على theme.txt
-    if [ -z "$best_match" ]; then
-        best_match="${found_themes[0]}"
-    fi
-
-    echo "تم اختيار المسار الأنسب تلقائياً: $best_match"
-    SELECTED_THEME_PATH="$best_match"
+# --- دالة التسجيل (Logging) ---
+log_action() {
+    echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] $1" | sudo tee -a "$LOG_FILE" >/dev/null
 }
 
-# الطلب من المستخدم
-read -p "أدخل اسم مجلد الثيم أو اضغط Enter للبحث الذكي: " user_input
-
-if [ -z "$user_input" ]; then
-    smart_search
-else
-    SELECTED_THEME_PATH="./$user_input"
+# --- فحص صلاحيات الجذر (Root Check) ---
+if [[ $EUID -ne 0 ]]; then
+   echo -e "${RED}❌ خطأ: هذا الوحش يحتاج لصلاحيات الجذور (sudo) ليعمل.${NC}"
+   exit 1
 fi
 
-# فحص نهائي وتطبيق الثيم (المنطق الأساسي)
-if [ -d "$SELECTED_THEME_PATH" ]; then
-    echo "جاري تطبيق الثيم من $SELECTED_THEME_PATH..."
-    # هنا تضع أوامر النسخ وتعديل ملف /etc/default/grub
-    # sudo cp -r "$SELECTED_THEME_PATH" "$THEMES_DIR/"
-    # ... إلخ
+echo -e "${CYAN}${BOLD}========================================${NC}"
+echo -e "${CYAN}${BOLD}    🛠️  مصلح ومثبت ثيمات الجروب الخارق   ${NC}"
+echo -e "${CYAN}${BOLD}========================================${NC}"
+log_action "بدء تشغيل الأداة v1.0"
+
+# --- فحص الاعتماديات (Dependencies) ---
+echo -e "${BLUE}🔍 جاري فحص أدوات النظام الأساسية...${NC}"
+for cmd in unzip tar grep find awk sed; do
+    if ! command -v $cmd &> /dev/null; then
+        echo -e "${RED}❌ الأداة '$cmd' مفقودة! قم بتثبيتها عبر: xbps-install -y $cmd${NC}"
+        log_action "فشل: الأداة $cmd غير مثبتة."
+        exit 1
+    fi
+done
+
+# --- دالة فك الضغط الشاملة ---
+extract_archive() {
+    local archive="$1"
+    local dest="$2"
+    echo -e "${YELLOW}📦 جاري تفكيك التشفير والضغط للملف: $(basename "$archive")${NC}"
+    mkdir -p "$dest"
+    
+    case "$archive" in
+        *.zip) unzip -qo "$archive" -d "$dest" ;;
+        *.tar.gz|*.tgz) tar -xzf "$archive" -C "$dest" ;;
+        *.tar.xz|*.txz) tar -xJf "$archive" -C "$dest" ;;
+        *.tar) tar -xf "$archive" -C "$dest" ;;
+        *) echo -e "${RED}❌ صيغة غير مدعومة!${NC}"; return 1 ;;
+    esac
+    log_action "تم فك ضغط $archive في $dest"
+}
+
+# --- القائمة التفاعلية (Interactive Menu) ---
+show_menu() {
+    echo -e "\n${CYAN}📂 الثيمات المتوفرة حالياً في $BOOT_THEMES :${NC}"
+    local count=1
+    declare -A theme_map
+    
+    # فحص المجلدات التي تحتوي على theme.txt فقط
+    for d in "$BOOT_THEMES"/*/; do
+        if [[ -f "${d}theme.txt" ]]; then
+            theme_name=$(basename "$d")
+            echo -e "  ${GREEN}[$count]${NC} - $theme_name"
+            theme_map[$count]="$d"
+            ((count++))
+        fi
+    done
+    
+    if [[ $count -eq 1 ]]; then
+        echo -e "  ${YELLOW}لا يوجد أي ثيم مثبت هنا حالياً.${NC}"
+    fi
+    echo -e "  ${GREEN}[0]${NC} - 📝 إدخال مسار ملف مضغوط (zip/tar) لتثبيته"
+    echo -e "  ${RED}[q]${NC} - ❌ خروج"
+    
+    read -p "$(echo -e "\n${BOLD}👉 اختر رقماً أو إرسل مسار ملف: ${NC}")" CHOICE
+    
+    if [[ "$CHOICE" == "q" ]]; then
+        echo -e "${YELLOW}تم الإلغاء ببرود. وداعاً!${NC}"
+        exit 0
+    elif [[ "$CHOICE" == "0" ]]; then
+        read -p "$(echo -e "${BOLD}📂 اسحب ملف الثيم (Zip/Tar) هنا: ${NC}")" RAW_INPUT
+        INPUT=$(echo "$RAW_INPUT" | sed "s/'//g") # تنظيف المسار
+    elif [[ -n "${theme_map[$CHOICE]}" ]]; then
+        INPUT="${theme_map[$CHOICE]}"
+    else
+        INPUT=$(echo "$CHOICE" | sed "s/'//g")
+    fi
+}
+
+# --- التنفيذ والبحث ---
+show_menu
+
+# تحديد مسار البحث بعد إدخال المستخدم
+if [[ -f "$INPUT" ]]; then
+    # المستخدم أعطى ملف مضغوط
+    extract_archive "$INPUT" "$TEMP_EXTRACT"
+    SEARCH_PATH="$TEMP_EXTRACT"
+elif [[ -d "$INPUT" ]]; then
+    # المستخدم اختار مجلداً موجوداً
+    echo -e "${BLUE}🔍 جاري الفحص داخل المجلد المختار...${NC}"
+    SEARCH_PATH="$INPUT"
 else
-    echo "خطأ: المجلد غير موجود."
+    echo -e "${RED}❌ مدخل غير صالح. المسار غير موجود.${NC}"
+    exit 1
 fi
+
+# --- البحث الذكي عن الدقة (Smart Resolution Hunter) ---
+echo -e "${BLUE}🎯 جاري البحث عن ملف theme.txt بأفضل دقة...${NC}"
+
+# ترتيب الأولويات: 1080p ثم 2k ثم 4k ثم الافتراضي
+THEME_FILE=$(find "$SEARCH_PATH" -name "theme.txt" | grep -i "1080p" | head -n 1)
+[ -z "$THEME_FILE" ] && THEME_FILE=$(find "$SEARCH_PATH" -name "theme.txt" | grep -i "2k" | head -n 1)
+[ -z "$THEME_FILE" ] && THEME_FILE=$(find "$SEARCH_PATH" -name "theme.txt" | grep -i "4k" | head -n 1)
+[ -z "$THEME_FILE" ] && THEME_FILE=$(find "$SEARCH_PATH" -name "theme.txt" | head -n 1)
+
+if [[ -z "$THEME_FILE" ]]; then
+    echo -e "${RED}❌ كارثة: لم أجد ملف theme.txt نهائياً!${NC}"
+    rm -rf "$TEMP_EXTRACT" 2>/dev/null
+    exit 1
+fi
+
+THEME_DIR=$(dirname "$THEME_FILE")
+THEME_NAME=$(basename "$THEME_DIR")
+
+echo -e "${GREEN}✅ تم قنص الثيم بنجاح: ${BOLD}$THEME_NAME${NC}"
+
+# --- النقل والتثبيت ---
+if [[ "$THEME_DIR" != "$BOOT_THEMES"* ]]; then
+    echo -e "${YELLOW}🚀 جاري زرع الثيم في مجلد الإقلاع ($BOOT_THEMES)...${NC}"
+    mkdir -p "$BOOT_THEMES"
+    cp -rf "$THEME_DIR" "$BOOT_THEMES/"
+    FINAL_THEME_PATH="$BOOT_THEMES/$THEME_NAME/theme.txt"
+    log_action "تم نسخ الثيم $THEME_NAME إلى /boot/grub/themes/"
+else
+    FINAL_THEME_PATH="$THEME_FILE"
+fi
+
+# --- النسخ الاحتياطي والتعديل ---
+echo -e "${BLUE}💾 جاري أخذ نسخة احتياطية من ملف إعدادات الجروب...${NC}"
+cp "$GRUB_CONFIG" "$BACKUP_CONFIG"
+log_action "تم أخذ نسخة احتياطية في $BACKUP_CONFIG"
+
+echo -e "${YELLOW}⚙️ جاري تعديل الإعدادات وتطبيق الثيم...${NC}"
+# إزالة التفعيل عن أي ثيم قديم وتفعيل الجديد بضربة sed واحدة
+sed -i "s|^#*GRUB_THEME=.*|GRUB_THEME=\"$FINAL_THEME_PATH\"|" "$GRUB_CONFIG"
+
+# التأكد من تفعيل الواجهة الرسومية للجروب (إلغاء تعليق GRUB_TERMINAL_OUTPUT=gfxterm)
+sed -i "s|^#*GRUB_TERMINAL_OUTPUT=.*|GRUB_TERMINAL_OUTPUT=\"gfxterm\"|" "$GRUB_CONFIG"
+
+# --- التحديث النهائي ---
+echo -e "${CYAN}🔄 جاري بناء قائمة الإقلاع الجديدة (grub-mkconfig)...${NC}"
+grub-mkconfig -o /boot/grub/grub.cfg > /dev/null 2>&1
+
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}${BOLD}✨ تمت العملية بنجاح ساحق! النظام جاهز ببرود.${NC}"
+    log_action "تم تطبيق الثيم $THEME_NAME وتحديث الجروب بنجاح."
+else
+    echo -e "${RED}❌ حدث خطأ أثناء تحديث الجروب. راجع الإعدادات.${NC}"
+    log_action "فشل في تشغيل grub-mkconfig."
+fi
+
+# --- التنظيف ---
+rm -rf "$TEMP_EXTRACT" 2>/dev/null
+echo -e "${CYAN}========================================${NC}"
+exit 0
