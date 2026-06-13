@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# 1. التأكد أننا داخل مستودع جيت
+if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+    echo "❌ Ops! هذا المجلد ليس مستودع Git."
+    exit 1
+fi
+
+# 2. جلب الملفات المعدلة أو الجديدة
+STATUS_FILES=$(git status --porcelain)
+
+if [ -z "$STATUS_FILES" ]; then
+    echo "✨ المستودع نظيف 100%، لا يوجد شيء لرفعه!"
+    exit 0
+fi
+
+# 3. تجهيز رسالة الـ Commit تلقائياً لو المستخدم لم يكتبها
+# نأخذ اسم أول ملف معدل لذكاء الرسالة
+FIRST_FILE=$(echo "$STATUS_FILES" | head -n 1 | awk '{print $2}')
+AUTO_MSG="Update: modified $FIRST_FILE and other tweaks"
+
+# إذا مررت رسالة مخصصة (مثلاً: gito "fix bad bug") نستخدمها، وإلا نأخذ التلقائية
+COMMIT_MSG="${1:-$AUTO_MSG}"
+
+echo "📦 جاري تجهيز الملفات للرفع..."
+git add .
+
+echo "📝 تسجيل الـ Commit برسالة: \"$COMMIT_MSG\""
+git commit -m "$COMMIT_MSG"
+
+# 4. جلب اسم الفرع الحالي تلقائياً (main أو master أو غيره)
+CURRENT_BRANCH=$(git branch --show-current)
+
+echo "🚀 جاري الرفع إلى GitHub على الفرع ($CURRENT_BRANCH)..."
+git push origin "$CURRENT_BRANCH"
+
+echo "🎉 تمت العملية بنجاح ساحق! مستودعك محدث الآن."
