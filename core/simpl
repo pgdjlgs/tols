@@ -6,22 +6,19 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-# تحديد مجلد core الحقيقي داخل مستودع tols الحالي
-CORE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
+# البحث داخل مجلد core في المكان اللي واقف فيه المستخدم حالياً
 echo "[*] جاري تبسيط أوامر المستودع وتحويلها لأوامر نظام حقيقية..."
 
-# فحص الأوامر داخل مجلد core اللي ينتهي بـ -pgdjlgs
-for file in "$CORE_DIR"/*-pgdjlgs; do
+for file in "$(pwd)"/core/*-pgdjlgs; do
     if [ -x "$file" ]; then
         full_name=$(basename "$file")
         short_name="${full_name%-pgdjlgs}"
         
-        # عمل رابط رمزي (Symlink) مباشرة في /usr/bin/ باسم الاختصار الصغير
+        # عمل الرابط الرمزي في /usr/bin/
         ln -sf "$file" "/usr/bin/$short_name"
         
         echo "  [+] تم تفعيل الأمر الحقيقي بالنظام: $short_name"
     fi
 done
 
-echo "[+] انتهى! الأوامر المختصرة شقالة الحين في كامل النظام بدون source!"
+echo "[+] انتهى! الأوامر المختصرة شقالة الحين في كامل النظام."
