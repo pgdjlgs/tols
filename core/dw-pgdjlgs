@@ -1,41 +1,40 @@
 #!/bin/bash
-# dw-pgdjlgs - Dynamic Package Manager
-# لا يحتاج لتعديل مهما زاد عدد الأدوات أو الإصدارات
+# dw-pgdjlgs - My Dynamic Package Manager
+# made by pgdjlgs v1
 
 TOOL=$1
 VERSION=$2
 REPO="pgdjlgs/tols"
 LOCAL_BIN="/usr/local/bin"
 
-# 1. منع التحميل المتكرر (Anti-Duplicate)
+# هل الادات مثبتة 
 if [ -f "$LOCAL_BIN/$TOOL" ] && [ -z "$VERSION" ]; then
-    echo "⚠️  The tool '$TOOL' is already installed."
-    echo "💡 To update it to the latest version, run: up-pgdjlgs $TOOL"
+    echo "⚠️ Hey! '$TOOL' is already installed on your PC."
+    echo "💡 If you want to update it, just run: up-pgdjlgs $TOOL"
     exit 0
 fi
 
-# 2. المنطق الديناميكي للإصدارات
-# إذا المستخدم لم يكتب إصدار، نذهب لـ main تلقائياً
+# اختيار الاصدار
 if [ -z "$VERSION" ]; then
     TARGET_VERSION="main"
 else
     TARGET_VERSION="$VERSION"
 fi
 
-# 3. الرابط "العبقري" (يتشكل تلقائياً)
-# أي أداة ترفعها في bin/ وأي وسم (Tag) تضعه، هذا الرابط سيجده
+# رابط التحميل
 URL="https://raw.githubusercontent.com/$REPO/$TARGET_VERSION/bin/$TOOL"
 
-echo "📡 Checking cloud for $TOOL (Version: $TARGET_VERSION)..."
+echo "📡 Checking GitHub for $TOOL ($TARGET_VERSION)... please wait..."
 
-# 4. محاولة التحميل
+# بدء التحميل 
 sudo curl -s -L -f -o "$LOCAL_BIN/$TOOL" "$URL"
 
+# التأكد من نجاح التحميل
 if [ $? -eq 0 ]; then
     sudo chmod +x "$LOCAL_BIN/$TOOL"
-    echo "✅ Successfully installed $TOOL from $TARGET_VERSION."
+    echo "✅ Awesome! $TOOL is ready to use now."
 else
-    echo "❌ Error: Tool or Version not found on GitHub."
-    echo "Check: https://github.com/$REPO/tags"
+    echo "❌ Ops! Tool or Version not found inside my repo."
+    echo "You can check available versions here: https://github.com/$REPO/tags"
     exit 1
 fi
