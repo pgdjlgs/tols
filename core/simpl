@@ -1,28 +1,27 @@
 #!/bin/bash
 
-# تحديد مسار مجلد السكربتات الحالي في مستودعك تلقائياً
-REPO_BIN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# التأكد من تشغيل الأمر بصلاحيات الروت
+if [[ $EUID -ne 0 ]]; then
+   echo "[-] لازم تشغل الأمر بـ sudo: sudo simplify"
+   exit 1
+fi
 
-echo "[*] جاري فحص المستودع وتبسيط الأوامر..."
+# تحديد مجلد core الحقيقي داخل مستودع tols الحالي
+CORE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# البحث عن أي ملف ينتهي بـ -pgdjlgs داخل مجلد السكربت
-for file in "$REPO_BIN"/*-pgdjlgs; do
-    # التأكد من أن الملف موجود وقابل للتنفيذ
+echo "[*] جاري تبسيط أوامر المستودع وتحويلها لأوامر نظام حقيقية..."
+
+# فحص الأوامر داخل مجلد core اللي ينتهي بـ -pgdjlgs
+for file in "$CORE_DIR"/*-pgdjlgs; do
     if [ -x "$file" ]; then
-        # استخراج الاسم الكامل للملف (مثال: dw-pgdjlgs)
         full_name=$(basename "$file")
-        # قص اللاحقة "-pgdjlgs" للحصول على الاسم المختصر (مثال: dw)
         short_name="${full_name%-pgdjlgs}"
         
-        # تنظيف ملفات الإعدادات من الاختصار القديم لمنع التكرار عند إعادة التشغيل
-        sed -i "/alias $short_name=/d" ~/.bashrc ~/.zshrc 2>/dev/null
+        # عمل رابط رمزي (Symlink) مباشرة في /usr/bin/ باسم الاختصار الصغير
+        ln -sf "$file" "/usr/bin/$short_name"
         
-        # حقن الاختصار النظيف في ملفات إعدادات Bash و Zsh
-        echo "alias $short_name='$file'" >> ~/.bashrc
-        echo "alias $short_name='$file'" >> ~/.zshrc
-        
-        echo "  [+] $full_name  ==>  $short_name"
+        echo "  [+] تم تفعيل الأمر الحقيقي بالنظام: $short_name"
     fi
 done
 
-echo "[+] تمت العملية بنجاح! افتح ترمينال جديد أو اكتب 'source ~/.bashrc' لتفعيل التغييرات الحالية."
+echo "[+] انتهى! الأوامر المختصرة شقالة الحين في كامل النظام بدون source!"
